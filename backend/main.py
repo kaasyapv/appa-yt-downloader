@@ -4,13 +4,24 @@ from fastapi.responses import StreamingResponse
 import yt_dlp, os, tempfile, re
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
-def health(): return {"ok": True}
+def health():
+    return {"ok": True}
 
 @app.get("/download")
-def download(url: str = Query(...), quality: str = Query("720"), audio_only: str = Query("false")):
+def download(
+    url: str = Query(...),
+    quality: str = Query("720"),
+    audio_only: str = Query("false")
+):
     is_audio = audio_only.lower() == "true"
     tmpdir = tempfile.mkdtemp()
 
@@ -21,8 +32,7 @@ def download(url: str = Query(...), quality: str = Query("720"), audio_only: str
             "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}],
             "quiet": True,
         }
-        ext = "mp3"
-        mime = "audio/mpeg"
+        ext, mime = "mp3", "audio/mpeg"
     else:
         opts = {
             "format": f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/best[height<={quality}]",
@@ -30,8 +40,7 @@ def download(url: str = Query(...), quality: str = Query("720"), audio_only: str
             "merge_output_format": "mp4",
             "quiet": True,
         }
-        ext = "mp4"
-        mime = "video/mp4"
+        ext, mime = "mp4", "video/mp4"
 
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -52,13 +61,9 @@ def download(url: str = Query(...), quality: str = Query("720"), audio_only: str
     })
 ```
 
-Then create `backend/requirements.txt`:
+Also edit `backend/requirements.txt` to make sure it has exactly:
 ```
-fastapi
-uvicorn[standard]
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
 yt-dlp
-```
-
-Then create `backend/Procfile`:
-```
-web: uvicorn main:app --host 0.0.0.0 --port $PORT
+python-multipart==0.0.9
