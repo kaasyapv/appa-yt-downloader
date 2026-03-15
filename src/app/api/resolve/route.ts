@@ -7,13 +7,16 @@ export async function POST(req: NextRequest) {
 
     if (!url) return NextResponse.json({ error: "URL is required" }, { status: 400 });
 
-    const quality = videoQuality || "720";
+    const quality = isAudioOnly
+      ? "bestaudio"
+      : `bestvideo[height<=${videoQuality || "720"}]+bestaudio/best[height<=${videoQuality || "720"}]`;
 
-    const redirectUrl = isAudioOnly
-      ? `https://cnvmp3.com/v6/?url=${encodeURIComponent(url)}`
-      : `https://ssyoutube.com/en13/download?url=${encodeURIComponent(url)}&quality=${quality}p`;
+    // Yozora — public yt-dlp serverless API
+    const apiUrl = `https://yozora.vercel.app/api/download?url=${encodeURIComponent(url)}&format=${encodeURIComponent(quality)}`;
 
-    return NextResponse.json({ status: "redirect", redirectUrl });
+    // Just return the URL — browser fetches directly from Yozora
+    return NextResponse.json({ status: "ok", url: apiUrl });
+
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Server error" },
