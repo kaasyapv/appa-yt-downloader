@@ -59,11 +59,3 @@ def download(
     return StreamingResponse(stream(), media_type=mime, headers={
         "Content-Disposition": f'attachment; filename="{title}.{ext}"'
     })
-```
-
-Also edit `backend/requirements.txt` to make sure it has exactly:
-```
-fastapi==0.111.0
-uvicorn[standard]==0.30.1
-yt-dlp
-python-multipart==0.0.9
