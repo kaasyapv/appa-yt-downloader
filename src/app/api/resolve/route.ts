@@ -3,50 +3,35 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { url, videoQuality, isAudioOnly } = body;
+    const { url, isAudioOnly } = body;
 
     if (!url) return NextResponse.json({ error: "URL is required" }, { status: 400 });
 
-    const format = isAudioOnly ? "mp3" : "mp4";
-    const quality = isAudioOnly ? "128" : (videoQuality || "720");
+    // Extract video ID
+    const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    const videoId = match?.[1];
 
-    // Step 1: Request conversion
-    const convertRes = await fetch(
-      `https://loader.to/ajax/download.php?format=${format}&url=${encodeURIComponent(url)}`,
-      { headers: { "Accept": "application/json" } }
-    );
-
-    if (!convertRes.ok) throw new Error("Conversion service unavailable");
-    const convertData = await convertRes.json();
-
-    if (!convertData.id) throw new Error("Could not start conversion");
-
-    const id = convertData.id;
-
-    // Step 2: Poll for completion (max 30 seconds)
-    for (let i = 0; i < 15; i++) {
-      await new Promise(r => setTimeout(r, 2000));
-
-      const progressRes = await fetch(
-        `https://loader.to/ajax/progress.php?id=${id}`,
-        { headers: { "Accept": "application/json" } }
-      );
-
-      if (!progressRes.ok) continue;
-      const progressData = await progressRes.json();
-
-      if (progressData.download_url) {
-        return NextResponse.json({
-          status: "ok",
-          url: progressData.download_url,
-          filename: `download.${format}`,
-        });
-      }
-
-      if (progressData.success === 0) throw new Error("Conversion failed");
+    if (!videoId) {
+      return NextResponse.json({ error: "Could not parse YouTube video ID" }, { status: 400 });
     }
 
-    throw new Error("Conversion timed out. Try a shorter video.");
+    // Return redirect URLs — client will open one in a new tab
+    const redirectUrls = isAudioOnly
+      ? [
+          `https://cnvmp3.com/v6/?url=${encodeURIComponent(url)}`,
+          `https://ytmp3.cc/en13/`,
+        ]
+      : [
+          `https://ssyoutube.com/en13/download?url=${encodeURIComponent(url)}`,
+          `https://y2mate.industries/en13/?url=${encodeURIComponent(url)}`,
+        ];
+
+    return NextResponse.json({
+      status: "redirect",
+      redirectUrl: redirectUrls[0],
+      fallbackUrl: redirectUrls[1],
+      message: "Opening download page…",
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Server error" },
