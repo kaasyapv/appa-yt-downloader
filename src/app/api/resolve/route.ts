@@ -11,10 +11,8 @@ export async function POST(req: NextRequest) {
       ? "bestaudio"
       : `bestvideo[height<=${videoQuality || "720"}]+bestaudio/best[height<=${videoQuality || "720"}]`;
 
-    // Yozora — public yt-dlp serverless API
     const apiUrl = `https://yozora.vercel.app/api/download?url=${encodeURIComponent(url)}&format=${encodeURIComponent(quality)}`;
 
-    // Just return the URL — browser fetches directly from Yozora
     return NextResponse.json({ status: "ok", url: apiUrl });
 
   } catch (e) {
