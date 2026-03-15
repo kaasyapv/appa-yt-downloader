@@ -274,7 +274,7 @@ export default function Home() {
               <button
                 className={`${styles.dlBtn} ${state === "done" ? styles.dlDone : ""}`}
                 onClick={startDownload}
-                disabled={state === "resolving" || state === "done"}
+                disabled={isBusy || state === "done"}
               >
                 {state === "resolving" ? (
                   <><span className={styles.loaderSm} /> Getting link…</>
