@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import styles from "./page.module.css";
 
 type Mode = "video" | "playlist" | "audio";
-type AppState = "idle" | "fetching" | "ready" | "resolving" | "done" | "error";
+type AppState = "idle" | "fetching" | "ready" | "done" | "error";
 
 interface VideoInfo {
   title: string;
@@ -47,7 +47,6 @@ export default function Home() {
 
     setMode(selectedMode);
     setState("fetching");
-    setStatusMsg("");
     setErrMsg("");
     setInfo(null);
     setThumbError(false);
@@ -66,8 +65,8 @@ export default function Home() {
 
   const startDownload = async () => {
     if (!info || !mode) return;
-    setState("resolving");
-    setStatusMsg("Getting download link…");
+    setState("fetching");
+    setStatusMsg("Opening download…");
 
     try {
       const res = await fetch("/api/resolve", {
@@ -75,28 +74,23 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim(), videoQuality: quality, isAudioOnly: mode === "audio" }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error || "Could not get download link");
 
-      const a = document.createElement("a");
-      a.href = data.url;
-      a.download = data.filename || "download";
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not get download link");
+
+      const downloadWindow = window.open(data.redirectUrl, "_blank", "noopener,noreferrer");
+      if (!downloadWindow) window.location.href = data.redirectUrl;
 
       setState("done");
-      setStatusMsg("Download started!");
+      setStatusMsg("Download page opened!");
     } catch (e) {
       setErrMsg(e instanceof Error ? e.message : "Download failed.");
       setState("error");
     }
   };
 
-  const isBusy = state === "fetching" || state === "resolving";
-  const showPanel = state === "ready" || state === "resolving" || state === "done";
+  const isBusy = state === "fetching";
+  const showPanel = state === "ready" || state === "done";
 
   return (
     <main className={styles.main}>
@@ -130,10 +124,18 @@ export default function Home() {
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
               </svg>
             </span>
-            <input ref={inputRef} className={styles.input} type="url" placeholder="Paste link"
-              value={url} onChange={(e) => { setUrl(e.target.value); if (state !== "idle") reset(); }}
+            <input
+              ref={inputRef}
+              className={styles.input}
+              type="url"
+              placeholder="Paste link"
+              value={url}
+              onChange={(e) => { setUrl(e.target.value); if (state !== "idle") reset(); }}
               onKeyDown={(e) => e.key === "Enter" && handleAction("video")}
-              spellCheck={false} autoComplete="off" disabled={isBusy} />
+              spellCheck={false}
+              autoComplete="off"
+              disabled={isBusy}
+            />
             {url && !isBusy && (
               <button className={styles.clearBtn} onClick={() => { setUrl(""); reset(); inputRef.current?.focus(); }} aria-label="Clear">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -146,13 +148,31 @@ export default function Home() {
 
         <div className={styles.actions}>
           {(["video", "playlist", "audio"] as Mode[]).map((m) => (
-            <button key={m}
+            <button
+              key={m}
               className={`${styles.actionBtn} ${mode === m && state !== "error" ? styles.actionActive : ""}`}
-              onClick={() => handleAction(m)} disabled={isBusy}>
+              onClick={() => handleAction(m)}
+              disabled={isBusy}
+            >
               <span className={styles.actionIcon} aria-hidden>
-                {m === "video" && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><polygon points="5 3 19 12 5 21 5 3" /></svg>}
-                {m === "playlist" && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>}
-                {m === "audio" && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>}
+                {m === "video" && (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                )}
+                {m === "playlist" && (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" />
+                    <line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" />
+                    <line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+                  </svg>
+                )}
+                {m === "audio" && (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                  </svg>
+                )}
               </span>
               <span className={styles.actionLabel}>
                 {m === "video" ? "Download Video" : m === "playlist" ? "Download Playlist" : "Download Audio"}
@@ -164,7 +184,7 @@ export default function Home() {
         {isBusy && (
           <div className={styles.statusRow}>
             <span className={styles.loader} aria-hidden />
-            <span className={styles.statusText}>{state === "fetching" ? "Fetching info…" : statusMsg}</span>
+            <span className={styles.statusText}>{statusMsg || "Fetching info…"}</span>
           </div>
         )}
 
@@ -180,32 +200,47 @@ export default function Home() {
         {showPanel && info && (
           <div className={styles.panel}>
             <div className={styles.panelThumb}>
-              <img src={thumbError ? (info.thumbnailFallback || "") : info.thumbnail} alt=""
-                className={styles.thumbImg} onError={() => setThumbError(true)} />
+              <img
+                src={thumbError ? (info.thumbnailFallback || "") : info.thumbnail}
+                alt=""
+                className={styles.thumbImg}
+                onError={() => setThumbError(true)}
+              />
               <div className={styles.thumbOverlay} aria-hidden />
             </div>
             <div className={styles.panelBody}>
               <p className={styles.panelTitle}>{info.title}</p>
               {info.duration && <p className={styles.panelDur}>{info.duration}</p>}
               {info.isPlaylist && <p className={styles.panelNote}>Public playlist · all videos</p>}
+
               {mode === "video" && (
                 <div className={styles.qualityRow}>
                   {QUALITIES.map((q) => (
-                    <button key={q}
+                    <button
+                      key={q}
                       className={`${styles.qualBtn} ${quality === q ? styles.qualActive : ""}`}
-                      onClick={() => setQuality(q)} disabled={isBusy}>
+                      onClick={() => setQuality(q)}
+                    >
                       {q === "2160" ? "4K" : `${q}p`}
                     </button>
                   ))}
                 </div>
               )}
-              <button className={`${styles.dlBtn} ${state === "done" ? styles.dlDone : ""}`}
-                onClick={startDownload} disabled={isBusy || state === "done"}>
-                {isBusy ? (<><span className={styles.loaderSm} /> Getting link…</>)
-                  : state === "done" ? (<><span aria-hidden>✓</span> Download started</>)
-                  : mode === "audio" ? "Get MP3"
-                  : mode === "playlist" ? "Download Playlist"
-                  : `Download ${quality === "2160" ? "4K" : quality + "p"}`}
+
+              <button
+                className={`${styles.dlBtn} ${state === "done" ? styles.dlDone : ""}`}
+                onClick={startDownload}
+                disabled={state === "done"}
+              >
+                {state === "done" ? (
+                  <><span aria-hidden>✓</span> Download page opened</>
+                ) : mode === "audio" ? (
+                  "Get MP3"
+                ) : mode === "playlist" ? (
+                  "Download Playlist"
+                ) : (
+                  `Download ${quality === "2160" ? "4K" : quality + "p"}`
+                )}
               </button>
             </div>
           </div>
