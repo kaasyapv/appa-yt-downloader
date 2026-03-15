@@ -66,7 +66,7 @@ export default function Home() {
   const startDownload = async () => {
     if (!info || !mode) return;
     setState("fetching");
-    setStatusMsg("Opening download…");
+    setStatusMsg("Getting download link…");
 
     try {
       const res = await fetch("/api/resolve", {
@@ -76,13 +76,19 @@ export default function Home() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not get download link");
+      if (!res.ok || !data.url) throw new Error(data.error || "Could not get download link");
 
-      const downloadWindow = window.open(data.redirectUrl, "_blank", "noopener,noreferrer");
-      if (!downloadWindow) window.location.href = data.redirectUrl;
+      const a = document.createElement("a");
+      a.href = data.url;
+      a.download = data.filename || "download";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
       setState("done");
-      setStatusMsg("Download page opened!");
+      setStatusMsg("Download started!");
     } catch (e) {
       setErrMsg(e instanceof Error ? e.message : "Download failed.");
       setState("error");
@@ -230,10 +236,10 @@ export default function Home() {
               <button
                 className={`${styles.dlBtn} ${state === "done" ? styles.dlDone : ""}`}
                 onClick={startDownload}
-                disabled={state === "done"}
+                disabled={isBusy || state === "done"}
               >
                 {state === "done" ? (
-                  <><span aria-hidden>✓</span> Download page opened</>
+                  <><span aria-hidden>✓</span> {statusMsg}</>
                 ) : mode === "audio" ? (
                   "Get MP3"
                 ) : mode === "playlist" ? (
