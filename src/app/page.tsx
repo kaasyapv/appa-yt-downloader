@@ -263,7 +263,7 @@ export default function Home() {
                       key={q}
                       className={`${styles.qualBtn} ${quality === q ? styles.qualActive : ""}`}
                       onClick={() => setQuality(q)}
-                      disabled={state === "resolving"}
+                      disabled={isBusy}
                     >
                       {q === "2160" ? "4K" : `${q}p`}
                     </button>
